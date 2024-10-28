@@ -31,7 +31,7 @@ class CodeReviewService:
     BACKOFF_FACTOR = 2
     SAFETY_RETRY_LIMIT = 3
     SAFETY_BACKOFF_FACTOR = 2
-    
+
     redis_client = redis.StrictRedis(
         host=config("REDIS_HOST"),
         port=int(config("REDIS_PORT")),
@@ -78,7 +78,7 @@ class CodeReviewService:
                     attempt += 1
                 elif response.status_code in self.RETRY_STATUS_CODES:
                     attempt += 1
-                    backoff_time = self.BACKOFF_FACTOR ** attempt
+                    backoff_time = self.BACKOFF_FACTOR**attempt
                     logger.warning(
                         f"Retrying fetch for file content from {file_url} in {backoff_time} seconds "
                         f"due to status {response.status_code} (Attempt {attempt}/{self.MAX_RETRIES})"
@@ -102,7 +102,6 @@ class CodeReviewService:
             status_code=500, detail="Exceeded max retries for fetching file content."
         )
 
-
     async def fetch_all_files_content(
         self, owner: str, repo: str, path: str = ""
     ) -> Dict[str, Optional[str]]:
@@ -119,7 +118,9 @@ class CodeReviewService:
             while attempt < self.MAX_RETRIES:
                 try:
                     async with httpx.AsyncClient() as client:
-                        response = await client.get(url, headers=self._get_github_headers())
+                        response = await client.get(
+                            url, headers=self._get_github_headers()
+                        )
                         response.raise_for_status()
 
                         repo_content = response.json()
@@ -127,11 +128,13 @@ class CodeReviewService:
                             return files_content
 
                         tasks = [
-                            self._fetch_content_recursive(item, owner, repo, files_content)
+                            self._fetch_content_recursive(
+                                item, owner, repo, files_content
+                            )
                             for item in repo_content
                         ]
                         await asyncio.gather(*tasks)
-                        break 
+                        break
 
                 except httpx.HTTPStatusError as e:
                     if response.status_code == self.RATE_LIMIT_STATUS_CODE:
@@ -143,24 +146,27 @@ class CodeReviewService:
                         await asyncio.sleep(sleep_time)
                     elif response.status_code in self.RETRY_STATUS_CODES:
                         attempt += 1
-                        backoff_time = self.BACKOFF_FACTOR ** attempt
+                        backoff_time = self.BACKOFF_FACTOR**attempt
                         logger.warning(
                             f"Retrying fetch for repository content due to status {response.status_code} "
                             f"(Attempt {attempt}/{self.MAX_RETRIES}). Backing off for {backoff_time} seconds."
                         )
                         await asyncio.sleep(backoff_time)
                     else:
-                        logger.error(f"Failed to fetch repository content from {url}: {e}")
+                        logger.error(
+                            f"Failed to fetch repository content from {url}: {e}"
+                        )
                         raise HTTPException(
                             status_code=response.status_code,
-                            detail="Failed to fetch repository content."
+                            detail="Failed to fetch repository content.",
                         )
                 except Exception as e:
                     logger.error(
                         f"Unexpected error fetching repository content from {url}: {e}"
                     )
                     raise HTTPException(
-                        status_code=500, detail="Unexpected error fetching repository content."
+                        status_code=500,
+                        detail="Unexpected error fetching repository content.",
                     )
 
             page += 1
@@ -210,16 +216,21 @@ class CodeReviewService:
     def parse_review_response(
         response_text: str, found_files: FileTreeModel
     ) -> ReviewResponseModel:
-        sections = re.split(
-            r"### \d+\. (Downsides/Comments|Rating|Conclusion)", response_text
+        downsides_comments = re.search(
+            r"### Downsides:\n(.*?)(?=\n###|$)", response_text, re.DOTALL
         )
-        sections = [section.strip() for section in sections if section.strip()]
+        rating = re.search(r"### Rating:\n(.*?)(?=\n###|$)", response_text, re.DOTALL)
+        conclusion = re.search(
+            r"### Conclusion:\n(.*?)(?=\n###|$)", response_text, re.DOTALL
+        )
 
         return ReviewResponseModel(
             found_files=FileTreeModel.parse_obj(found_files),
-            downsides_comments=sections[1] if len(sections) > 1 else "",
-            rating=sections[3] if len(sections) > 3 else "",
-            conclusion=sections[5] if len(sections) > 5 else "",
+            downsides_comments=(
+                downsides_comments.group(1).strip() if downsides_comments else ""
+            ),
+            rating=rating.group(1).strip() if rating else "",
+            conclusion=conclusion.group(1).strip() if conclusion else "",
         )
 
     async def generate_review(
@@ -237,10 +248,12 @@ class CodeReviewService:
             f"Review this code for a {candidate_level} level assignment.\n\n"
             f"Files found in the repository:\n{file_structure}\n\n"
             f"Code snippets:\n{code_snippets}\n\n"
-            "Provide feedback exactly in the following format:\n"
-            "### 1. Downsides/Comments:\n- List any issues or missing features in the code.\n\n"
-            "### 2. Rating:\n- Provide a rating out of 5 and briefly justify the score.\n\n"
-            "### 3. Conclusion:\n- Summarize the main points and give recommendations for improvements."
+            "Provide feedback exactly in the following format, ensuring each section starts with the specified label:\n"
+            "### Start of Review\n"
+            "### Downsides:\n- List any issues or missing features in the code.\n\n"
+            "### Rating:\n- Provide a rating out of 5 and briefly justify the score.\n\n"
+            "### Conclusion:\n- Summarize the main points and give recommendations for improvements.\n"
+            "### End of Review"
         )
 
         safety_attempt = 0
@@ -257,10 +270,10 @@ class CodeReviewService:
                         f"Retrying after backoff..."
                     )
                     safety_attempt += 1
-                    backoff_time = self.SAFETY_BACKOFF_FACTOR ** safety_attempt
+                    backoff_time = self.SAFETY_BACKOFF_FACTOR**safety_attempt
                     await asyncio.sleep(backoff_time)
-                    continue 
-                
+                    continue
+
                 response_text = response.text
                 return self.parse_review_response(
                     response_text, FileTreeModel.parse_obj(file_structure)
@@ -269,10 +282,11 @@ class CodeReviewService:
             except Exception as e:
                 logger.error(f"An error occurred while generating the review: {e}")
                 raise HTTPException(
-                    status_code=500, detail="An error occurred while generating the review."
+                    status_code=500,
+                    detail="An error occurred while generating the review.",
                 )
 
         raise HTTPException(
             status_code=400,
-            detail="Review generation blocked by safety filters after multiple attempts."
+            detail="Review generation blocked by safety filters after multiple attempts.",
         )
