@@ -22,8 +22,8 @@ To run this project, you need:
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/yourusername/your-repo.git
-   cd your-repo
+   git clone https://github.com/t-s-e-z-a-r/CodeReviewAI
+   cd CodeReviewAI
    ```
 
 2. Set up your environment variables in a `.env` file:
@@ -102,3 +102,23 @@ pytest tests --asyncio-mode=auto
 The tests cover error handling, caching, and the main review functionality of the application.
 
 ---
+
+# Second Part
+## 1. Infrastructure and Load Balancing
+- **Horizontal Scaling**: Deploy multiple instances of the application on a Kubernetes cluster to distribute the load across various nodes. This setup enables horizontal scaling to meet spikes in review requests.
+- **Load Balancing**: Use a load balancer (like GCP’s Load Balancer or an Nginx-based solution) to evenly distribute incoming requests to the available instances. This setup minimizes request bottlenecks, ensuring the system remains responsive under heavy load.
+- **Autoscaling**: Implement autoscaling policies to dynamically add or remove instances based on traffic patterns. This approach maintains optimal resource usage, avoiding under- or over-provisioning.
+## 2. Database and Caching
+- **Database Sharding and Replication**: Split data across multiple database nodes by sharding, which enhances read/write performance for large datasets. Database replication also provides fault tolerance and improves read performance.
+- **Redis Cache for Frequent Data**: Use Redis to cache frequently accessed data such as user review histories, common repository files, or frequently requested data to reduce repeated database calls. This will reduce database load and improve response times.
+- **Asynchronous Task Queue**: Offload heavy or time-consuming tasks (e.g., fetching large repositories or file processing) to a background task queue (such as Celery with Redis or Google Cloud Tasks). The main API can quickly respond to users, while tasks are processed in the background.
+## 3. API Rate Limits and Cost Management for Vertex AI and GitHub APIs
+- **Rate-Limiting with Exponential Backoff**: Implement retry logic with exponential backoff for both GitHub and Vertex AI API calls. This approach helps to manage rate limits effectively and ensures compliance with the API usage policies.
+- **Pooling API Calls**: Aggregate multiple small requests into single large requests where possible. For instance, batch file fetching from GitHub instead of multiple individual calls. This reduces the number of API calls and maximizes API efficiency.
+- **Cost Optimization**: Monitor the Vertex AI usage closely. Implement tiered caching for different levels of requests (e.g., a persistent cache for repetitive AI requests) to minimize unnecessary requests and thus reduce costs. For low-priority requests, consider using lower-cost alternative models.
+## 4. Handling Large Repositories with Pagination
+- **GitHub API Pagination**: Implement pagination support for repositories with over 100 files. When fetching repository files, handle paginated responses to systematically retrieve files without hitting GitHub’s API limits.
+- **Parallel Processing for Large File Repositories**: For repositories with many files, split file-processing tasks into parallel processes or threads, leveraging async calls to handle multiple files concurrently. This setup accelerates response times and avoids bottlenecks from large repositories.
+## 5. Monitoring and Alerts
+- **Monitoring Tools**: Use GCP’s built-in monitoring tools (or integrate tools like Prometheus and Grafana) to track API usage, request rates, latencies, and error rates.
+- **Real-time Alerts**: Configure alerts for thresholds on API rate limits, resource usage, and error spikes to proactively address potential scaling issues before they impact users.
