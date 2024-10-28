@@ -27,14 +27,14 @@ async def create_review(review: ReviewRequest) -> Union[ReviewResponseModel, dic
     review_response = await code_review_service.generate_review(
         files_content, review.candidate_level
     )
-    # code_review_service.cache_result(
-    #     cache_key,
-    #     (
-    #         review_response
-    #         if isinstance(review_response, dict)
-    #         else review_response.dict()
-    #     ),
-    #     ttl=3600,
-    # )
+    code_review_service.cache_result(
+        cache_key,
+        (
+            review_response
+            if isinstance(review_response, dict)
+            else review_response.dict()
+        ),
+        ttl=3600,
+    )
 
     return review_response
