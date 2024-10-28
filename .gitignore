@@ -1,0 +1,15 @@
+.env
+google_key.json
+
+__pycache__/
+*.py[cod]
+
+venv/
+.virtualenv/
+
+poetry.lock
+
+.vscode/
+.idea/
+*.swp
+*~
