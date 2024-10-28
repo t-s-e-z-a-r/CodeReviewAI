@@ -1,0 +1,4 @@
+2024-10-28 12:36:06,667 - httpx - INFO - HTTP Request: GET https://api.github.com/repos/GNOME/gvfs/contents/?page=1&per_page=100 "HTTP/1.1 403 Forbidden"
+2024-10-28 12:36:06,669 - tools - WARNING - Rate limit reached. Sleeping for 3110 seconds.
+2024-10-28 12:39:07,344 - httpx - INFO - HTTP Request: GET https://api.github.com/repos/GNOME/gvfs/contents/?page=1&per_page=100 "HTTP/1.1 403 Forbidden"
+2024-10-28 12:39:07,345 - tools - WARNING - Rate limit reached. Sleeping for 2929 seconds.
